@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Registro Bus Menorca</title>
+    <style>
+        :root { --rojo: #c62828; --fondo: #f8f9fa; }
+        body { font-family: sans-serif; background: var(--fondo); padding: 15px; margin: 0; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: var(--rojo); text-align: center; margin-top: 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .btn-guardar { width: 100%; padding: 15px; background: var(--rojo); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem; }
+        
+        /* Estilo del Resumen Desplegable */
+        #caja-resumen { background: #fff; border: 2px solid #ffcdd2; border-radius: 12px; padding: 15px; }
+        #cabecera { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        #flecha { color: var(--rojo); font-weight: bold; }
+        #totales-siempre { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ffcdd2; font-weight: bold; display: flex; justify-content: space-around; }
+        #detalle-dias { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; max-height: 250px; overflow-y: auto; }
+        .fila { border-bottom: 1px solid #f9f9f9; padding: 8px 0; font-size: 0.85rem; color: #555; display: flex; justify-content: space-between; }
+        .btn-borrar { width: 100%; padding: 8px; background: none; border: 1px solid #eee; color: #ccc; border-radius: 5px; margin-top: 15px; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>TMSA Basha 🚌</h2>
+        <label>Número de Bus:</label>
+        <input type="number" id="bus" placeholder="Ej: 2541" inputmode="numeric">
+        
+        <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label>Inicio:</label>
+                <input type="time" id="ini">
+            </div>
+            <div style="flex: 1;">
+                <label>Fin:</label>
+                <input type="time" id="fin">
+            </div>
+        </div>
+        
+        <label>Kilómetros:</label>
+        <input type="number" id="km" placeholder="Km totales" inputmode="numeric">
+        
+        <button class="btn-guardar" onclick="guardar()">💾 GUARDAR JORNADA</button>
+    </div>
+
+    <div id="caja-resumen">
+        <div id="cabecera" onclick="toggle()">
+            <h3 style="margin:0; color:var(--rojo); font-size: 1.1rem;">Resumen Mensual 🗓️</h3>
+            <span id="flecha">▼ VER DÍAS</span>
+        </div>
+
+        <div id="totales-siempre">
+            <span>Horas: <b id="total-h">0.0</b></span>
+            <span>Km: <b id="total-k">0</b></span>
+        </div>
+
+        <div id="detalle-dias">
+            <div id="lista-logs"></div>
+            <button class="btn-borrar" onclick="borrarDatos()">Borrar historial del mes</button>
+        </div>
+    </div>
+
+    <script>
+        function toggle() {
+            const d = document.getElementById('detalle-dias');
+            const f = document.getElementById('flecha');
+            // Corregido para que detecte correctamente el estado actual
+            if (d.style.display === "none" || d.style.display === "") {
+                d.style.display = "block";
+                f.innerText = "▲ CERRAR";
+            } else {
+                d.style.display = "none";
+                f.innerText = "▼ VER DÍAS";
+            }
+        }
+
+        function guardar() {
+            const b = document.getElementById('bus').value;
+            const i = document.getElementById('ini').value;
+            const f = document.getElementById('fin').value;
+            const k = document.getElementById('km').value;
+
+            if (!b) { alert("⚠️ ¡Para! Introduce el NÚMERO DE BUS antes de guardar."); return; }
+            if (!i || !f) { alert("⚠️ Faltan las HORAS de inicio o fin."); return; }
+
+            const hoy = new Date();
+            const fecha = hoy.getDate() + "/" + (hoy.getMonth() + 1);
+            
+            let hI = new Date("2000-01-01 " + i);
+            let hF = new Date("2000-01-01 " + f);
+            let diff = (hF - hI) / 1000 / 60 / 60;
+            if (diff < 0) diff += 24;
+
+            const log = { fecha, bus: b, h: diff, k: parseFloat(k || 0) };
+            let datos = JSON.parse(localStorage.getItem('tmsa_logs')) || [];
+            datos.push(log);
+            localStorage.setItem('tmsa_logs', JSON.stringify(datos));
+
+            alert("✅ Jornada guardada");
+            location.reload();
+        }
+
+        function cargar() {
+            const datos = JSON.parse(localStorage.getItem('tmsa_logs')) || [];
+            const lista = document.getElementById('lista-logs');
+            let th = 0; let tk = 0;
+
+            datos.forEach(d => {
+                th += d.h;
+                tk += d.k;
+                lista.innerHTML += `<div class="fila"><span>❌ ${d.fecha} (Bus ${d.bus})</span><b>${d.h.toFixed(2)}h | ${d.k}km</b></div>`;
+            });
+
+            document.getElementById('total-h').innerText = th.toFixed(2);
+            document.getElementById('total-k').innerText = tk;
+        }
+
+        function borrarDatos() {
+            if (confirm("¿Seguro que quieres borrar todos los registros?")) {
+                localStorage.removeItem('tmsa_logs');
+                location.reload();
+            }
+        }
+
+        window.onload = cargar;
+    </script>
+</body>
+</html>
